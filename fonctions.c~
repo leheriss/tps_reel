@@ -94,11 +94,6 @@ void communiquer(void *arg) {
                     break;
             }
         }
-        else {
-        	serveur->close(serveur);
-        	rt_printf("tserver : Relance l'exécution de serveur\n");
-    		serveur->open(serveur, "8000");
-        }
     }
 }
 
