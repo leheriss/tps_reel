@@ -37,7 +37,8 @@ void connecter(void * arg) {
         if (status == STATUS_OK) {
             status = robot->start_insecurely(robot);
             if (status == STATUS_OK){
-                rt_printf("tconnect : Robot démarrer\n");
+                rt_printf("tconnect : Robot démarré\n");
+                //"Active" le thread qui actualise le watchdog (envoi d'un signal)
             }
         }
 
@@ -82,6 +83,12 @@ void communiquer(void *arg) {
                             rt_printf("tserver : Action connecter robot\n");
                             rt_sem_v(&semConnecterRobot);
                             break;
+                        //case ACTION_FIND_ARENA :
+                        //case ACTION_ARENA_IS_FOUND :
+                        //case ACTION_ARENA_CANCEL :
+                        //case ACTION_COMPUTE_CONTINUOUSLY_POSITION :
+                        //case ACTION_COMPUTE_POSITION :
+                        
                     }
                     break;
                 case MESSAGE_TYPE_MOVEMENT:
