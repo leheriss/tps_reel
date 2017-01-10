@@ -26,17 +26,23 @@ extern RT_TASK tServeur;
 extern RT_TASK tconnect;
 extern RT_TASK tmove;
 extern RT_TASK tenvoyer;
+<<<<<<< HEAD
 extern RT_TASK tcalcul;
+=======
 extern RT_TASK tbat;
 extern RT_TASK twatch;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 
 /* @descripteurs des mutex */
 extern RT_MUTEX mutexEtat;
 extern RT_MUTEX mutexMove;
+<<<<<<< HEAD
 extern RT_MUTEX mutexEtatCamera;
 extern RT_MUTEX mutexModeCalcul;
+=======
 extern RT_MUTEX mutexCompteur;
 extern RT_MUTEX mutexComm;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 
 /* @descripteurs des sempahore */
 extern RT_SEM semConnecterRobot;
@@ -49,9 +55,12 @@ extern RT_QUEUE queueMsgGUI;
 /* @variables partagées */
 extern int etatCommMoniteur;
 extern int etatCommRobot;
+<<<<<<< HEAD
 extern int mode_calcul_pos;
 extern int etatCamera; 
+=======
 extern int compteur;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 extern DServer *serveur;
 extern DRobot *robot;
 extern DMovement *move;
@@ -64,9 +73,12 @@ extern int PRIORITY_TSERVEUR;
 extern int PRIORITY_TCONNECT;
 extern int PRIORITY_TMOVE;
 extern int PRIORITY_TENVOYER;
+<<<<<<< HEAD
 extern int PRIORITY_TCALCUL;
+=======
 extern int PRIORITY_TBAT;
 extern int PRIORITY_TWATCH;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 
 #endif	/* GLOBAL_H */
 

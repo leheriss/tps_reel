@@ -61,6 +61,7 @@ void initStruct(void) {
         rt_printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+<<<<<<< HEAD
     if (err = rt_mutex_create(&mutexModeCalcul, NULL)) {
         rt_printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
@@ -69,6 +70,7 @@ void initStruct(void) {
         rt_printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }    
+=======
    if (err = rt_mutex_create(&mutexCompteur, NULL)) {
         rt_printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
@@ -77,6 +79,7 @@ void initStruct(void) {
         rt_printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 
     /* Creation du semaphore */
     if (err = rt_sem_create(&semConnecterRobot, NULL, 0, S_FIFO)) {
@@ -156,14 +159,20 @@ void startTasks() {
         rt_printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+<<<<<<< HEAD
     if (err = rt_task_start(&tcalcul, &calcul_position, NULL)) {
         rt_printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+    
+=======
     if (err = rt_task_start(&tbat, &batterie, NULL)) {
         rt_printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
+
   if (err = rt_task_start(&twatch, &watchdog, NULL)) {
         rt_printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
