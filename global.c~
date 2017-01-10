@@ -11,12 +11,14 @@ RT_TASK tServeur;
 RT_TASK tconnect;
 RT_TASK tmove;
 RT_TASK tenvoyer;
+<<<<<<< HEAD
 RT_TASK tcalcul;
 
 RT_MUTEX mutexEtat;
 RT_MUTEX mutexMove;
 RT_MUTEX mutexEtatCamera;
 RT_MUTEX mutexModeCalcul;
+=======
 RT_TASK tbat;
 RT_TASK twatch;
 
@@ -24,6 +26,7 @@ RT_MUTEX mutexEtat;
 RT_MUTEX mutexMove;
 RT_MUTEX mutexCompteur;
 RT_MUTEX mutexComm;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 
 RT_SEM semConnecterRobot;
 RT_SEM semWatchdog;
@@ -33,10 +36,13 @@ RT_QUEUE queueMsgGUI;
 
 int etatCommMoniteur = 1;
 int etatCommRobot = 1;
+<<<<<<< HEAD
 int mode_calcul_pos = 0; // 0 -> pas de calcul, 1 -> calcul unique, 2 -> calcul continu
 int etatCamera = 1; // cf plus bas
-int compteur=0;
 
+=======
+int compteur=0;
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0
 DRobot *robot;
 DMovement *move;
 DServer *serveur;
@@ -50,8 +56,11 @@ int PRIORITY_TSERVEUR = 30;
 int PRIORITY_TCONNECT = 20;
 int PRIORITY_TMOVE = 10;
 int PRIORITY_TENVOYER = 25;
+<<<<<<< HEAD
 int PRIORITY_TCALCUL = 25; // /!\ a determiner
+
+
+=======
 int PRIORITY_TBAT = 15;
 int PRIORITY_TWATCH = 20;
-
-
+>>>>>>> daacad3b42b9abbc924f91ae4ef23c4c69b779f0

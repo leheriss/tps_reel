@@ -1,4 +1,5 @@
 #include "fonctions.h"
+#include "drobot.h"
 
 int write_in_queue(RT_QUEUE *msgQueue, void * data, int size);
 
@@ -23,7 +24,11 @@ void connecter(void * arg) {
     DMessage *message;
 
     rt_printf("tconnect : Debut de l'exécution de tconnect\n");
+    rt_sem_p(&semWatchdog, TM_INFINITE);
+    rt_sem_p(&semBatterie, TM_INFINITE);
 
+
+    rt_printf("tconnect : J'ai pris les sémaphores\n");
     while (1) {
         rt_printf("tconnect : Attente du sémaphore semConnecterRobot\n");
         rt_sem_p(&semConnecterRobot, TM_INFINITE);
@@ -35,9 +40,11 @@ void connecter(void * arg) {
         rt_mutex_release(&mutexEtat);
 
         if (status == STATUS_OK) {
-            status = robot->start_insecurely(robot);
+            status = robot->start(robot);
             if (status == STATUS_OK){
                 rt_printf("tconnect : Robot démarrer\n");
+		rt_sem_v(&semWatchdog);
+		rt_sem_v(&semBatterie);
             }
         }
 
@@ -139,9 +146,9 @@ void deplacer(void *arg) {
     DMessage *message;
 
     rt_printf("tmove : Debut de l'éxecution de periodique à 1s\n");
-    rt_task_set_periodic(NULL, TM_NOW, 1000000000);
+    rt_task_set_periodic(NULL, TM_NOW, 200000000);
 
-    while (1) {
+    while (compteur<3) {
         /* Attente de l'activation périodique */
         rt_task_wait_period(NULL);
         rt_printf("tmove : Activation périodique\n");
@@ -175,25 +182,158 @@ void deplacer(void *arg) {
                     break;
             }
             rt_mutex_release(&mutexMove);
+	    rt_mutex_acquire(&mutexComm, TM_INFINITE);
+	    status = robot->set_motors(robot, gauche, droite);
+	    rt_mutex_release(&mutexComm);
+     
+	    if (status == STATUS_OK) {
+	      rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	      compteur=0;
+	      rt_mutex_release(&mutexCompteur);
+	    }
+            else if (status != STATUS_OK) {
+	      rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	      compteur=compteur++;
+	      if (compteur>=3){
+		rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+		etatCommRobot=status;
+		rt_mutex_release(&mutexEtat);
 
-            status = robot->set_motors(robot, gauche, droite);
+		message = d_new_message();
+		message->put_state(message, status);
 
-            if (status != STATUS_OK) {
-                rt_mutex_acquire(&mutexEtat, TM_INFINITE);
-                etatCommRobot = status;
-                rt_mutex_release(&mutexEtat);
+		rt_printf("tmove : Envoi message nok\n");
+		if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+		  message->free(message);
+		}
 
-                message = d_new_message();
-                message->put_state(message, status);
-
-                rt_printf("tmove : Envoi message\n");
-                if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
-                    message->free(message);
-                }
-            }
+	      }
+	      rt_mutex_release(&mutexCompteur);
+	    }
         }
     }
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+    rt_printf("tmove : ****************\n");
+
 }
+
+
+void batterie (void *arg){
+  int status=1;
+  DMessage *message;
+  DBattery * bat;
+  int* etatBat;
+  etatBat=malloc(sizeof(int));
+
+  rt_printf("tbat : Debut de l'éxecution de periodique à 250ms\n");
+  rt_task_set_periodic(NULL, TM_NOW, 250000000);
+
+   rt_sem_p(&semBatterie, TM_INFINITE);
+
+  while (compteur<3){
+
+
+    rt_task_wait_period(NULL);
+    rt_printf("tbat : Activation périodique\n");
+
+    rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+    status = etatCommRobot;
+    rt_mutex_release(&mutexEtat);
+
+    if (status == STATUS_OK) {
+      rt_mutex_acquire(&mutexComm, TM_INFINITE);
+      status=robot->get_vbat(robot, etatBat);
+      rt_mutex_release(&mutexComm);
+     
+      if (status == STATUS_OK) {
+	rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	compteur=0;
+	rt_mutex_release(&mutexCompteur);
+
+	bat= d_new_battery();
+	bat-> set_level(bat,*etatBat);
+	message = d_new_message();
+	message->put_battery_level(message, bat);
+	rt_printf("tbat : Envoi message ok\n");
+	if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+	  message->free(message);
+	}
+
+      }
+      else if (status != STATUS_OK) {
+	rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	compteur=compteur++;
+	if (compteur>=3){
+	  rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+	  etatCommRobot=status;
+	  rt_mutex_release(&mutexEtat);
+
+	  message = d_new_message();
+	  message->put_state(message, status);
+
+	  rt_printf("tbat : Envoi message nok\n");
+	  if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+	    message->free(message);
+	  }
+
+	}
+	rt_mutex_release(&mutexCompteur);
+      }
+    }
+  }  
+
+}
+
+void watchdog (void *arg){
+  int status;
+  DMessage *message;
+
+
+   rt_sem_p(&semWatchdog, TM_INFINITE);
+   
+
+   rt_printf("twatchdog : Debut de l'éxecution de periodique à 1s\n");
+   rt_task_set_periodic(NULL, TM_NOW, 1000000000);
+
+  while (compteur<3){
+
+    rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+    status = etatCommRobot;
+    rt_mutex_release(&mutexEtat);
+
+    if (status == STATUS_OK) {
+      
+      rt_task_wait_period(NULL);
+      rt_printf("tbat : Activation périodique\n");
+      rt_mutex_acquire(&mutexComm, TM_INFINITE);
+      status=robot->reload_wdt(robot);
+      rt_mutex_release(&mutexComm);
+      if (status == STATUS_OK) {
+	rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	compteur=0;
+	rt_mutex_release(&mutexCompteur);
+      }
+      else if (status != STATUS_OK) {
+	rt_mutex_acquire(&mutexCompteur, TM_INFINITE);
+	compteur=compteur++;
+	if (compteur>=3){
+	  rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+	  etatCommRobot=status;
+	  rt_mutex_release(&mutexEtat);
+
+	  message = d_new_message();
+	  message->put_state(message, status);
+	}
+      }
+    }
+  }
+}
+
 
 int write_in_queue(RT_QUEUE *msgQueue, void * data, int size) {
     void *msg;
@@ -221,8 +361,7 @@ void calcul_position (void *arg) {
     camera->open(camera);
     
     arena=NULL;
-    	  	
-    	
+
     	
 		DImage *img = d_new_image();
 		DJpegimage *jpegimg = d_new_jpegimage();
