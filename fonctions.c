@@ -37,8 +37,7 @@ void connecter(void * arg) {
         if (status == STATUS_OK) {
             status = robot->start_insecurely(robot);
             if (status == STATUS_OK){
-                rt_printf("tconnect : Robot démarré\n");
-                //"Active" le thread qui actualise le watchdog (envoi d'un signal)
+                rt_printf("tconnect : Robot démarrer\n");
             }
         }
 
@@ -70,6 +69,10 @@ void communiquer(void *arg) {
     while (communicationStatus > 0) {
         rt_printf("tserver : Attente d'un message\n");
         communicationStatus = serveur->receive(serveur, msg);
+ 		rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+ 		if (communicationStatus > 0)
+		    etatCommMoniteur = STATUS_OK;
+	    rt_mutex_release(&mutexEtat);        
         num_msg++;
         if (communicationStatus > 0) {
             switch (msg->get_type(msg)) {
@@ -83,12 +86,32 @@ void communiquer(void *arg) {
                             rt_printf("tserver : Action connecter robot\n");
                             rt_sem_v(&semConnecterRobot);
                             break;
-                        //case ACTION_FIND_ARENA :
-                        //case ACTION_ARENA_IS_FOUND :
-                        //case ACTION_ARENA_CANCEL :
-                        //case ACTION_COMPUTE_CONTINUOUSLY_POSITION :
-                        //case ACTION_COMPUTE_POSITION :
-                        
+                        case ACTION_FIND_ARENA:
+                        	rt_printf("tserver : Action trouver arene\n");
+                       		rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+    						etatCamera = FIND_ARENA;
+    						rt_mutex_release(&mutexEtatCamera);
+                        	break;
+                        case ACTION_ARENA_IS_FOUND:
+                        	rt_printf("tserver : Action arène trouvée\n");
+                       		rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+    						etatCamera = ARENA_IS_FOUND;
+    						rt_mutex_release(&mutexEtatCamera);
+                        	break;
+                        case ACTION_ARENA_FAILED:
+                        	rt_printf("tserver : Action trouver arene failed\n");
+                       		rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+    						etatCamera = ARENA_CANCEL;
+    						rt_mutex_release(&mutexEtatCamera);
+                        	break;
+                        case ACTION_COMPUTE_CONTINUOUSLY_POSITION:
+                        	rt_printf("tserver : Action chercher position\n");
+                       		rt_mutex_acquire(&mutexModeCalcul, TM_INFINITE);
+                       		if (mode_calcul_pos == NON_CALCUL)
+    							mode_calcul_pos = CALCUL_CONTINU;
+    						else
+    							mode_calcul_pos = NON_CALCUL;
+    						rt_mutex_release(&mutexModeCalcul);                        	
                     }
                     break;
                 case MESSAGE_TYPE_MOVEMENT:
@@ -186,5 +209,138 @@ int write_in_queue(RT_QUEUE *msgQueue, void * data, int size) {
 
     return err;
 }
+
+
+//Utilise variables globales : mode_calcul_pos (RW), etatCamera (RW), camera(W), arena(RW)
+//Fonction periodique a lancer toutes les 600ms
+void calcul_position (void *arg) {
+
+    rt_printf("tcalcul : Debut de l'éxecution periodique à 600ms\n");
+    rt_task_set_periodic(NULL, TM_NOW, 600000000);
+    
+    camera->open(camera);
+    
+    arena=NULL;
+    	  	
+    	
+    	
+		DImage *img = d_new_image();
+		DJpegimage *jpegimg = d_new_jpegimage();
+		DPosition *position = d_new_position();
+		int cpt;
+		int found;
+		int mode_calc;
+		int aux_etatCamera;
+		
+		while(1){
+		DMessage *message = d_new_message();
+		
+		rt_mutex_acquire(&mutexEtat, TM_INFINITE);
+	    int status = etatCommMoniteur;
+ 		rt_mutex_release(&mutexEtat); 
+		
+        rt_task_wait_period(NULL);
+        rt_printf("tcalcul : Execution periodique\n");
+        		
+		if (status == STATUS_OK) {
+
+		
+		cpt = 0;
+		found = 0;
+		
+	   	rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+		aux_etatCamera = etatCamera;
+		rt_mutex_release(&mutexEtatCamera);	
+		
+		if (aux_etatCamera == FIND_ARENA) {
+			    rt_printf("tcalcul : Recherche de l'arene\n");
+				while(cpt < 3 && !(found)) {
+					d_camera_get_frame(camera, img);
+					if ((arena = d_image_compute_arena_position (img)) != NULL)
+						found = 1;
+					else
+						cpt ++;
+				}
+				if (found) {
+					d_imageshop_draw_arena (img, arena);
+					jpegimg -> compress(jpegimg, img);
+					
+					message->put_jpeg_image(message, jpegimg);
+									
+					rt_printf("tcalcul : Envoi arene\n");
+             	   	if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+           	  	       message->free(message);
+                	}
+        		   	rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+                	etatCamera = WAIT_USER;
+        			rt_mutex_release(&mutexEtatCamera);	
+				}
+		}
+		else if (aux_etatCamera == WAIT_USER) {
+			    rt_printf("tcalcul : Attente de la validation ou non de l'arene\n");
+		}
+		else { //IS_FOUND, ARENA_CANCEL ou WORKING
+				rt_mutex_acquire(&mutexModeCalcul, TM_INFINITE);
+                mode_calc = mode_calcul_pos;
+                rt_mutex_release(&mutexModeCalcul);
+                
+				if (mode_calc != NON_CALCUL) {
+				    rt_printf("tcalcul : calcul de la position\n");			
+					if (aux_etatCamera == ARENA_CANCEL) {
+						arena = NULL;
+	        		   	rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+						etatCamera = WORKING;
+	        			rt_mutex_release(&mutexEtatCamera);	
+					}
+					if (aux_etatCamera == ARENA_IS_FOUND) {
+	        		   	rt_mutex_acquire(&mutexEtatCamera, TM_INFINITE);
+						etatCamera = WORKING;
+	        			rt_mutex_release(&mutexEtatCamera);	
+					}
+					while (cpt < 3 && !(found)) {
+						d_camera_get_frame (camera, img);
+						//à cause d'un problème dans le code de compute_robot_position, il faut
+						//utiliser arene = NULL pour que la detection ne crashe pas
+						if ((position = d_image_compute_robot_position (img, NULL)) != NULL)
+							found = 1;
+						else
+							cpt ++;
+					}
+					if (found) {
+						d_imageshop_draw_position (img, position);
+						jpegimg -> compress(jpegimg, img);
+					
+						message->put_jpeg_image(message, jpegimg);				
+						rt_printf("tcalcul : Envoi image avec position\n");
+		         	   	if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+		       	  	       message->free(message);
+		            	}
+		            	
+						message = d_new_message();
+		            	message->put_position(message, position);
+						rt_printf("tcalcul : Envoi position\n");
+		         	   	if (write_in_queue(&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+		       	  	       message->free(message);
+		            	}
+					}
+				}
+		}
+		}
+
+	}
+	d_image_free(img);
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
