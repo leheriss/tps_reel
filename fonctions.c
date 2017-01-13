@@ -41,7 +41,7 @@ void connecter (void *arg) {
         if (status == STATUS_OK) {
             status = robot->start (robot);
             if (status == STATUS_OK) {
-                rt_printf ("tconnect : Robot démarrer\n");
+                rt_printf ("tconnect : Robot démarré\n");
                 rt_sem_v (&semWatchdog);
                 rt_sem_v (&semBatterie);
 
