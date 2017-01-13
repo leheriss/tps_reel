@@ -453,6 +453,7 @@ void calcul_position (void *arg) {
                 }
             }
         }
+        message->free(message);
     }
 }
 
