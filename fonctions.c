@@ -20,44 +20,70 @@ void envoyer (void *arg) {
 }
 
 void connecter (void *arg) {
-    int status;
-    DMessage *message;
+  int status;
+  DMessage *message;
 
-    rt_printf ("tconnect : Debut de l'exécution de tconnect\n");
-    rt_sem_p (&semWatchdog, TM_INFINITE);
-    rt_sem_p (&semBatterie, TM_INFINITE);
+  rt_printf ("tconnect : Debut de l'exécution de tconnect\n");
+  rt_sem_p (&semWatchdog, TM_INFINITE);
+  rt_sem_p (&semBatterie, TM_INFINITE);
 
-    rt_printf ("tconnect : J'ai pris les sémaphores\n");
-    while (1) {
-        rt_printf ("tconnect : Attente du sémaphore semConnecterRobot\n");
-        rt_sem_p (&semConnecterRobot, TM_INFINITE);
-        rt_printf ("tconnect : Ouverture de la communication avec le robot\n");
-        status = robot->open_device (robot);
+  rt_printf ("tconnect : J'ai pris les sémaphores\n");
+  while (1) {
+    rt_printf ("tconnect : Attente du sémaphore semConnecterRobot\n");
+    rt_sem_p (&semConnecterRobot, TM_INFINITE);
+    rt_printf ("tconnect : Ouverture de la communication avec le robot\n");
+    status = robot->open_device (robot);
 
-        rt_mutex_acquire (&mutexEtat, TM_INFINITE);
-        etatCommRobot = status;
-        rt_mutex_release (&mutexEtat);
+    rt_mutex_acquire (&mutexEtat, TM_INFINITE);
+    etatCommRobot = status;
+    rt_mutex_release (&mutexEtat);
 
-        if (status == STATUS_OK) {
-            status = robot->start (robot);
-            if (status == STATUS_OK) {
-                rt_printf ("tconnect : Robot démarré\n");
-                rt_sem_v (&semWatchdog);
-                rt_sem_v (&semBatterie);
+    if (status == STATUS_OK) {
+      status = robot->start (robot);
+      if (status == STATUS_OK) {
+	rt_printf ("tconnect : Robot démarré\n");
+	rt_sem_v (&semWatchdog);
+	rt_sem_v (&semBatterie);
+	rt_mutex_acquire (&mutexCompteur, TM_INFINITE);
+	compteur = 0;
+	rt_mutex_release (&mutexCompteur);
+      } 
+      else if (status != STATUS_OK) {
+	rt_mutex_acquire (&mutexCompteur, TM_INFINITE);
+	compteur = compteur++;
+	if (compteur >= 3) {
+	  rt_mutex_acquire (&mutexEtat, TM_INFINITE);
+	  etatCommRobot = status;
+	  rt_mutex_release (&mutexEtat);
 
-            }
-        }
+	  message = d_new_message ();
+	  message->put_state (message, status);
 
-        message = d_new_message ();
-        message->put_state (message, status);
+	  rt_printf ("tconnect : Envoi message nok\n");
+	  if (write_in_queue (&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+	    message->free (message);
+	  }
 
-        rt_printf ("tconnecter : Envoi message\n");
-        message->print (message, 100);
+	}
+	rt_mutex_release (&mutexCompteur);
 
-        if (write_in_queue (&queueMsgGUI, message, sizeof (DMessage)) < 0) {
-            message->free (message);
-        }
+      }
     }
+    else{
+      status=robot->stop (robot);
+      rt_queue_flush(msgqueue);
+    }
+
+    message = d_new_message ();
+    message->put_state (message, status);
+
+    rt_printf ("tconnecter : Envoi message\n");
+    message->print (message, 100);
+
+    if (write_in_queue (&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+      message->free (message);
+    }
+  }
 }
 
 void communiquer (void *arg) {
