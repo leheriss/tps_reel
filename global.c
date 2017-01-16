@@ -40,8 +40,6 @@ int compteur = 0;
 DRobot *robot;
 DMovement *move;
 DServer *serveur;
-DArena *arena;
-DCamera *camera;
 
 int MSG_QUEUE_SIZE = 10;
 

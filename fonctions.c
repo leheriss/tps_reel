@@ -1,5 +1,4 @@
 #include "fonctions.h"
-#include "drobot.h"
 
 int write_in_queue (RT_QUEUE * msgQueue, void *data, int size);
 
@@ -346,10 +345,10 @@ void calcul_position (void *arg) {
     rt_printf ("tcalcul : Debut de l'éxecution periodique à 600ms\n");
     rt_task_set_periodic (NULL, TM_NOW, 600000000);
 
+    DCamera *camera = d_new_camera();
     camera->open (camera);
 
-    arena = NULL;
-
+    DArena *arena = d_new_arena ();;
     DImage *img = d_new_image ();
     DJpegimage *jpegimg = d_new_jpegimage ();
     DPosition *position = d_new_position ();

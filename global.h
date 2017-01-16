@@ -55,8 +55,6 @@ extern int compteur;
 extern DServer *serveur;
 extern DRobot *robot;
 extern DMovement *move;
-extern DArena *arena;
-extern DCamera *camera;
 
 /* @constantes */
 extern int MSG_QUEUE_SIZE;
