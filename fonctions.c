@@ -157,6 +157,7 @@ void communiquer (void *arg) {
             serveur->close (serveur);
             rt_printf ("tserver : Relance l'exécution de serveur\n");
             serveur->open (serveur, "8000");
+            communicationStatus = 1;
         }
     }
 }
