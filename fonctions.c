@@ -475,7 +475,16 @@ void calcul_position (void *arg) {
                             message->free (message);
                         }
                     }
-                }
+                } else {
+                  d_camera_get_frame (camera, img);
+                  jpegimg->compress (jpegimg, img);
+
+                  message->put_jpeg_image (message, jpegimg);
+                  rt_printf ("tcalcul : Envoi image seule\n");
+                  if (write_in_queue (&queueMsgGUI, message, sizeof (DMessage)) < 0) {
+                      message->free (message);
+                  }
+               }
             }
         }
         message->free(message);
