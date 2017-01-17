@@ -101,12 +101,11 @@ void communiquer (void *arg) {
     while (1) {
         rt_printf ("tserver : Attente d'un message\n");
         communicationStatus = serveur->receive (serveur, msg);
-        rt_mutex_acquire (&mutexEtat, TM_INFINITE);
-        if (communicationStatus > 0)
-            etatCommMoniteur = STATUS_OK;
-        rt_mutex_release (&mutexEtat);
         num_msg++;
         if (communicationStatus > 0) {
+        	rt_mutex_acquire (&mutexEtat, TM_INFINITE);
+            etatCommMoniteur = STATUS_OK;
+       	rt_mutex_release (&mutexEtat);
             switch (msg->get_type (msg)) {
                 case MESSAGE_TYPE_ACTION:
                     rt_printf ("tserver : Le message %d reçu est une action\n", num_msg);
@@ -154,6 +153,9 @@ void communiquer (void *arg) {
                     break;
             }
         } else {
+        	rt_mutex_acquire (&mutexEtat, TM_INFINITE);
+            etatCommMoniteur = 0;
+       	rt_mutex_release (&mutexEtat);
             serveur->close (serveur);
             rt_printf ("tserver : Relance l'exécution de serveur\n");
             serveur->open (serveur, "8000");
